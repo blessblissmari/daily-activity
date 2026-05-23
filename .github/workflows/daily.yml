@@ -4,12 +4,17 @@ on:
   schedule:
     - cron: '17 9 * * *'
   workflow_dispatch:
+    inputs:
+      pick_count:
+        description: 'how many other repos to touch'
+        required: false
+        default: '2'
 
 permissions:
   contents: write
 
 jobs:
-  update:
+  self-update:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,5 +31,17 @@ jobs:
             echo "no changes"
             exit 0
           fi
-          git commit -m "chore: daily update $(date -u +%Y-%m-%d)"
+          git commit -m "chore: daily update"
           git push
+
+  multi-repo:
+    runs-on: ubuntu-latest
+    needs: self-update
+    steps:
+      - uses: actions/checkout@v4
+      - name: touch other repos
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+          GH_USER: ${{ github.repository_owner }}
+          PICK_COUNT: ${{ github.event.inputs.pick_count || '2' }}
+        run: python3 .github/scripts/multi_repo.py
